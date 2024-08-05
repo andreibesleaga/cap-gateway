@@ -21,7 +21,7 @@
     "express": "^4.17.1",
     "helmet": "^4.6.0",
     "morgan": "^1.10.0",
-    "nodemon": "^2.0.16",
+    "nodemon": "^2.0.22",
     "pm2": "^5.1.2",
     "rotating-file-stream": "^3.0.2",
     "validator": "^13.7.0",
