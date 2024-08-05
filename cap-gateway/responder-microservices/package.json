@@ -1,0 +1,28 @@
+{
+  "name": "microservice",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "author": "Andrei Besleaga",
+  "license": "All rights reserved!",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "start:server": "pm2 start index.js --name microservice --log ../LOGS/microservice.log --time"
+  },
+  "dependencies": {
+    "axios": "^1.7.3",
+    "cote": "^1.1.0",
+    "dotenv": "^16.4.5",
+    "fast-xml-parser": "^4.4.1",
+    "nodemon": "^2.0.16",
+    "pm2": "^5.1.2",
+    "winston": "^3.7.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.9.0",
+    "eslint-config-prettier": "^8.3.0",
+    "prettier": "^2.4.1"
+  }
+}

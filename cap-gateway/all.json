@@ -1,0 +1,22 @@
+{
+    "apps": [
+        {
+            "name"      : "gateway",
+            "script"    : "gateway/index.js",
+            "out_file"  : "./LOGS/gateway.std.log",
+            "error_file": "./LOGS/gateway.err.log"
+        },
+        {
+            "name"      : "admin-service",
+            "script"    : "responder-microservices/index.js",
+            "out_file"  : "./LOGS/admin.std.log",
+            "error_file": "./LOGS/admin.err.log"
+        },
+        {
+            "name"      : "cap-service",
+            "script"    : "responder-microservices/index.js",
+            "out_file"  : "./LOGS/cap.std.log",
+            "error_file": "./LOGS/cap.err.log"
+        }
+    ]
+}
