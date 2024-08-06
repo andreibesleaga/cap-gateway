@@ -1,11 +1,8 @@
-import dotenv from 'dotenv';
 import cote from 'cote';
 import logger from './logger.js';
 
 import AdminController from './controllers/admin.js';
 import CapController from './controllers/cap.js';
-
-dotenv.config({ silent: process.env.NODE_ENV === 'production' });
 
 // Setup microservice responders
 const service_responder = new cote.Responder({ name: 'service_responder' });

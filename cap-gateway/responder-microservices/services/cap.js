@@ -1,10 +1,7 @@
 /* eslint-disable no-unused-vars */
-
-import dotenv from 'dotenv';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import translateWithLibre from './translator.js';
 
-dotenv.config({ silent: process.env.NODE_ENV === 'production' });
 const getError = error => ({ error: error?.response?.data ?? error?.response?.message ?? error?.response });
 
 // Function to traverse and modify the JSON object

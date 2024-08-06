@@ -3,8 +3,7 @@
  */
 /* eslint-disable no-unused-vars */
 
-// import required
-import dotenv from 'dotenv';
+// imports required
 import express, { json, urlencoded } from 'express';
 import compression from 'compression';
 import morgan from 'morgan';
@@ -22,15 +21,14 @@ import { registerAdminCalls } from './controllers/admin.js';
 import { registerCapCalls } from './controllers/cap.js';
 
 // read config values
-dotenv.config({ silent: process.env.NODE_ENV === 'production' });
-const { APP_URL, APP_PORT, ACCESS_LOGS_DIR } = process.env;
+import { ENV, APP_URL, APP_PORT, ACCESS_LOGS_DIR } from './constants.js';
 
 // setup server
 const app = express();
 
 // HTTPS server settings (keys if in production and HTTPS mode)
 let httpsServer = null;
-if (process.env.NODE_ENV === 'production') {
+if (ENV === 'production') {
   const key = readFileSync('../key.pem');
   const cert = readFileSync('../cert.pem');
   httpsServer = createServer({ key, cert }, app);
@@ -69,7 +67,7 @@ function redirectUnmatched(req, res) {
 app.use(redirectUnmatched);
 
 // run HTTP(S) server local/production
-if (process.env.NODE_ENV === 'production') {
+if (ENV === 'production') {
   httpsServer.listen(APP_PORT, () => {
     logger.info(`API Gateway listening HTTPS at ${APP_URL}:${APP_PORT}`);
   });

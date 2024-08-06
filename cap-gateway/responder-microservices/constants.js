@@ -1,11 +1,7 @@
 // Constants for environment
 export const SERVICE_TIMEOUT = 3000;
 export const ENV = 'development';
-
-export const APP_URL = 'http://localhost';
-export const APP_PORT = 5000;
-
-export const ACCESS_LOGS_DIR = '../LOGS';
+export const TRANSLATOR_KEY = 'translationEngineAPIKey';
 
 // API Gateway Endpoints - app URLs routed in controllers to coresponding microservices
 export const Endpoints = Object.freeze({

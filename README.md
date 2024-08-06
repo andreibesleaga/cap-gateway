@@ -74,4 +74,4 @@ Current app is implemented a standard REST API with distributed mesh microservic
 API gateway is the entry point (to be deployed on cloud for availability/scalability) which balances all the requests to services.
 The responder microservice can be started as many times as necessary in the mesh network so that many responders will be available and balance the requests.
 
-Everything would be deployed on a cloud system and maybe using the cloud specific APIs/Resources for the operations as they are already managed/monitored and the needed resources increased when necessary so that the app would be always available and performant in case of high peak usage.
+Everything would be deployed (as separate microservice appservices) on a cloud system and maybe using the cloud specific APIs/Resources for the operations as they are already managed/monitored and the needed resources increased when necessary so that the app would be always available and performant in case of high peak usage.

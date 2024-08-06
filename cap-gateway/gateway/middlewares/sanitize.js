@@ -1,6 +1,4 @@
 import validator from 'validator';
-import dotenv from 'dotenv';
-dotenv.config({ silent: process.env.NODE_ENV === 'production' });
 
 import { HTTP_CODE } from '../constants.js';
 const getError = error => ({ error: error?.response?.data ?? error?.response?.message ?? error?.message ?? error?.response});

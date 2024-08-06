@@ -1,9 +1,5 @@
 import axios from 'axios';
-import dotenv from 'dotenv';
-
-// read config values
-dotenv.config({ silent: process.env.NODE_ENV === 'production' });
-const { TRANSLATOR_KEY } = process.env;
+import { TRANSLATOR_KEY } from '../constants.js';
 
 const translateWithLibre = async (text, source, target) => {
   const response = await axios.post('https://libretranslate.com/translate', {
