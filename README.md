@@ -7,6 +7,8 @@ This is a proof of concept, work in progress, application for a distributed mesh
 
 Application will use translation services (APIs) to translate info data submitted to English, if non existent, and add the corresponding information to the final XML result to deliver it to the final user.
 
+Article for the reference: https://medium.com/@andrei-besleaga/innovative-usage-of-emerging-it-technologies-in-multi-hazard-early-warning-systems-7bcfe3d170b9
+
 ### Backend consists of:
 
 1. API Gateway (REST API service) which is a NodeJs Express server for communication over HTTP(S) with clients
