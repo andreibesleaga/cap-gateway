@@ -10,15 +10,16 @@ const getLanguage = obj => {
 
 // Function to traverse and modify the JSON object
 const translateJson = async (obj, fromLang, translateEngine) => {
+  let translated = '';
   for (let key in obj) {
     if (typeof obj[key] === 'string') {
       let newContent = await translateEngine(obj[key], fromLang.substring(0, 2), 'en');
-      obj[key] += newContent;
+      translated += newContent;
     } else if (typeof obj[key] === 'object') {
-      obj[key] = translateJson(obj[key], fromLang, translateEngine);
+      translated = translateJson(obj[key], fromLang, translateEngine);
     }
   }
-  return obj;
+  return translated;
 };
 
 let translate = async (xmlMessage, exportJson) => {
