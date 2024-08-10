@@ -61,10 +61,11 @@ responder-microservices
 
 cap-microservice:
 POST /app/cap/translate : returns the posted XML CAP data with added english translation section (and optional result encoding JSON);
+(request body params: message - original XML CAP data, exportJson - optional boolean to return just JSON encoded result instead of XML)
 
 admin-microservice:
 POST /app/admin/services/pubsub : publish messages for inter micro services communication;
-(request body params: message - original XML CAP data, exportJson - optional boolean to return just JSON encoded result instead of XML)
+
 
 All API endpoints calls to be tested with Postman, ThunderClient directly from VSCode or other REST API tools.
 
