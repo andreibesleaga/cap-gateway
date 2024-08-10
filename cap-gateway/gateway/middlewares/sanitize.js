@@ -1,7 +1,9 @@
 import validator from 'validator';
 
 import { HTTP_CODE } from '../constants.js';
-const getError = error => ({ error: error?.response?.data ?? error?.response?.message ?? error?.message ?? error?.response});
+const getError = error => ({
+  error: error?.response?.data ?? error?.response?.message ?? error?.message ?? error?.response,
+});
 
 const MAX_PARAM_NAME_LENGTH = 50;
 const MAX_POST_PARAM_VALUES_LENGTH = 100000;
