@@ -76,4 +76,7 @@ Current app is implemented as a standard REST API with distributed mesh microser
 
 API gateway is the entry point which balances all the requests to services. The responder microservice can be started as many times as necessary in the mesh network so that many responders will be available and balance the requests, but also all the services and gateway can be deployed as app services in the cloud, without using the mesh inter-communicating network having the possibility to use the cloud specific APIs/Resources for the operations, as they are already managed/monitored and the needed resources increased when necessary, so that the app would be always available and performant in case of high peak usage.
 
-A flow would be configured through a proxy, for the requests to be done on the fly, by submitting automatically the XML CAP message, while in transit, and continuing the flow with the modified resulting response of the service output, complete XML CAP message, for further routing to destination.
+A flow would be configured through a proxy, for the requests to be done transparently on the fly, by submitting automatically the XML CAP message, while in transit, and continuing the flow with the modified resulting response of the service output, complete XML CAP message, for further routing to destination, or otherwise a standalone standard API version could be implemented as a REST API service to be called, and the initiator CAP client application would need to get the response for further sending it to clients destinations.
+
+![image](https://github.com/user-attachments/assets/07e41a14-aa3b-41b9-a888-9bd6d6a9a2e2)
+
