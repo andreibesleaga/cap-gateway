@@ -78,6 +78,6 @@ API gateway is the entry point which balances all the requests to services. The 
 
 A flow would be configured through a proxy, for the requests to be done transparently on the fly, by submitting automatically the XML CAP message, while in transit, and continuing the flow with the modified resulting response of the service output, complete XML CAP message, for further routing to destination, or otherwise a standalone standard API version could be implemented as a REST API service to be called, and the initiator CAP client application would need to get the response for further sending it to clients destinations.
 
-![image](https://github.com/user-attachments/assets/8166f099-db88-43d0-81c8-73078bef9d84)
+![image](https://github.com/user-attachments/assets/fee98fca-2c0c-49e3-8a2a-eb53a88e91fd)
 
 
