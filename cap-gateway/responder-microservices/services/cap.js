@@ -2,15 +2,13 @@ import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { translateWithLibre } from './translator.js';
 import logger from '../logger.js';
 
-/**
- * Formats error response
- * @param {Error} error - Error object
- * @returns {Object} Formatted error object
- */
-const getError = error => ({
-  error: error?.response?.data ?? error?.response?.message ?? error?.message ?? error,
-  details: error?.stack
-});
+class CapServiceError extends Error {
+  constructor(message, details) {
+    super(message);
+    this.name = 'CapServiceError';
+    this.details = details;
+  }
+}
 
 /**
  * Gets language from CAP alert
@@ -82,8 +80,8 @@ const translateObject = async (obj, fromLang, translateEngine) => {
       translatedObj[key] = await translateText(value, fromLang, translateEngine);
     } else if (Array.isArray(value)) {
       translatedObj[key] = await Promise.all(
-        value.map(item => 
-          typeof item === 'object' 
+        value.map(item =>
+          typeof item === 'object'
             ? translateObject(item, fromLang, translateEngine)
             : translateText(item, fromLang, translateEngine)
         )
@@ -105,71 +103,73 @@ const translateObject = async (obj, fromLang, translateEngine) => {
  * @param {Function} [customTranslator=translateWithLibre] - Custom translation function
  * @returns {Promise<string|Object>} Translated message
  */
-const translate = async (xmlMessage, exportJson = false, customTranslator = translateWithLibre) => {
+import * as translators from './translator.js';
+
+const translate = async (xmlMessage, exportJson = false, translator = 'translateWithLibre') => {
+  const customTranslator = translators[translator] || translators.translateWithLibre;
+
+  // Parse XML to JSON
+  const parserOptions = {
+    attributeNamePrefix: '@_',
+    ignoreAttributes: false,
+    parseAttributeValue: true,
+    trimValues: true,
+    parseTagValue: true,
+    numberParseOptions: {
+      hex: true,
+      leadingZeros: false
+    }
+  };
+
+  const parser = new XMLParser(parserOptions);
+  let alertData;
   try {
-    // Parse XML to JSON
-    const parserOptions = {
-      attributeNamePrefix: '@_',
-      ignoreAttributes: false,
-      parseAttributeValue: true,
-      trimValues: true,
-      parseTagValue: true,
-      numberParseOptions: {
-        hex: true,
-        leadingZeros: false
-      }
-    };
-
-    const parser = new XMLParser(parserOptions);
-    const alertData = parser.parse(xmlMessage);
-
-    // Check if translation is needed
-    const languageFrom = getLanguage(alertData);
-    if (languageFrom?.toLowerCase().includes('en')) {
-      return exportJson ? alertData : xmlMessage;
-    }
-
-    // Translate the alert info
-    logger.info('Starting CAP translation', { 
-      fromLanguage: languageFrom,
-      translator: customTranslator.name 
-    });
-
-    const translatedAlert = {
-      ...alertData,
-      alert: {
-        ...alertData.alert,
-        info: Array.isArray(alertData.alert.info)
-          ? await Promise.all(alertData.alert.info.map(info => 
-              translateObject(info, languageFrom, customTranslator)
-            ))
-          : await translateObject(alertData.alert.info, languageFrom, customTranslator)
-      }
-    };
-
-    if (exportJson) {
-      return translatedAlert;
-    }
-
-    // Convert back to XML
-    const builderOptions = {
-      attributeNamePrefix: '@_',
-      ignoreAttributes: false,
-      format: true,
-      indentBy: '  ',
-      suppressEmptyNode: true
-    };
-
-    const builder = new XMLBuilder(builderOptions);
-    return builder.build(translatedAlert);
-
+    alertData = parser.parse(xmlMessage);
   } catch (error) {
-    logger.error('CAP translation error:', error);
-    return {
-      error: getError(error),
-      status: 500
-    };
+    logger.error('XML parsing error:', error);
+    throw new CapServiceError('Invalid XML format', error.stack);
   }
+
+
+  // Check if translation is needed
+  const languageFrom = getLanguage(alertData);
+  if (languageFrom?.toLowerCase().includes('en')) {
+    return exportJson ? alertData : xmlMessage;
+  }
+
+  // Translate the alert info
+  logger.info('Starting CAP translation', {
+    fromLanguage: languageFrom,
+    translator: customTranslator.name
+  });
+
+  const translatedAlert = {
+    ...alertData,
+    alert: {
+      ...alertData.alert,
+      info: Array.isArray(alertData.alert.info)
+        ? await Promise.all(alertData.alert.info.map(info =>
+          translateObject(info, languageFrom, customTranslator)
+            ))
+        : await translateObject(alertData.alert.info, languageFrom, customTranslator)
+    }
+  };
+
+  if (exportJson) {
+    return translatedAlert;
+  }
+
+  // Convert back to XML
+  const builderOptions = {
+    attributeNamePrefix: '@_',
+    ignoreAttributes: false,
+    format: true,
+    indentBy: '  ',
+    suppressEmptyNode: true
+  };
+
+  const builder = new XMLBuilder(builderOptions);
+  return builder.build(translatedAlert);
 };
 
 export default {

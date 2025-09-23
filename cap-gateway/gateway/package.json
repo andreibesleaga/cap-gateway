@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "start:server": "pm2 start index.js --name gateway --log ../LOGS/APPLOG_gateway.log --time"
+    "start:server": "pm2 start index.js --name gateway --log ../LOGS/APPLOG_gateway.log --time",
+    "test": "jest"
   },
   "dependencies": {
     "body-parser": "^1.19.0",
@@ -29,9 +30,13 @@
     "winston": "^3.7.2"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/preset-env": "^7.28.3",
     "@types/express-slow-down": "^1.3.2",
+    "babel-jest": "^30.1.2",
     "eslint": "^8.2.0",
     "eslint-config-prettier": "^8.3.0",
+    "jest": "^30.1.3",
     "prettier": "^2.4.1"
   }
 }

@@ -5,15 +5,22 @@ class CapController {
   async translate(req) {
     const {
       message,
-      exportJson
+      exportJson,
+      translator
     } = req;
     try {
       const result = await CapService.translate(
-        message, exportJson
+        message, exportJson, translator
       );
       return result;
-    } catch (err) {
-      return err;
+    } catch (error) {
+      return {
+        error: {
+          message: error.message,
+          stack: error.stack,
+        },
+        status: 500,
+      };
     }
   }
 

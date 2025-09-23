@@ -9,16 +9,26 @@ const getError = error => ({
 });
 
 export function registerCapCalls(app) {
-  app.post(Endpoint.translate, sanitizeParams, schemaValidator, async (req, res) => {
+  const requester = new cote.Requester({ name: 'cap_requester_translate', timeout: SERVICE_TIMEOUT });
+
+  app.post(Endpoint.translate, sanitizeParams, schemaValidator, async (req, res, next) => {
     try {
-      const requester = new cote.Requester({ name: 'cap_requester_translate', timeout: SERVICE_TIMEOUT });
-      const request = { type: 'translate', message: req.body.message, exportJson: req.body.exportJson ?? false };
-      let r = await requester.send(request);
-      return r.status !== undefined && r.error !== undefined
-        ? res.status(r.status).json({ error: r.error })
-        : res.send(r);
+      const request = {
+        type: 'translate',
+        message: req.body.message,
+        exportJson: req.body.exportJson ?? false,
+        translator: req.body.translator
+      };
+      const r = await requester.send(request);
+      if (r.status && r.error) {
+        const error = new Error(r.error.message || 'An error occurred in the microservice');
+        error.statusCode = r.status;
+        error.stack = r.error.stack;
+        return next(error);
+      }
+      res.send(r);
     } catch (error) {
-      return res.status(error?.response?.status ?? HTTP_CODE.ServerError).json(getError(error));
+      next(error);
     }
   });
 }

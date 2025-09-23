@@ -60,11 +60,16 @@ if (ACCESS_LOGS_DIR) {
 registerAdminCalls(app);
 registerCapCalls(app);
 
-// redirect all unknown endpoints to /
-function redirectUnmatched(req, res) {
-  res.redirect(APP_URL);
-}
-app.use(redirectUnmatched);
+// Handle 404 errors
+app.use((req, res, next) => {
+  const error = new Error('Not Found');
+  error.status = 404;
+  next(error);
+});
+
+// Centralized error handler
+import errorHandler from './middlewares/errorHandler.js';
+app.use(errorHandler);
 
 // run HTTP(S) server local/production
 if (ENV === 'production') {
