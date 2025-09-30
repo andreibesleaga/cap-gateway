@@ -17,7 +17,7 @@
     "dotenv": "^16.4.5",
     "fast-xml-parser": "^4.4.1",
     "nodemon": "^2.0.16",
-    "pm2": "^5.1.2",
+    "pm2": "^6.0.9",
     "winston": "^3.7.2"
   },
   "devDependencies": {
