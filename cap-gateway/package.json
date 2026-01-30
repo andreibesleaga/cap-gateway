@@ -11,7 +11,7 @@
   "author": "Andrei Besleaga (Nicolae)",
   "license": "All rights reserved",
   "dependencies": {
-    "cote": "^1.1.0",
+    "cote": "^1.2.0",
     "nodemon": "^2.0.16"
   }
 }

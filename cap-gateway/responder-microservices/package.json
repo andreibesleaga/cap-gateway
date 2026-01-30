@@ -15,9 +15,9 @@
     "axios": "^1.7.3",
     "cote": "^1.1.0",
     "dotenv": "^16.4.5",
-    "fast-xml-parser": "^4.4.1",
+    "fast-xml-parser": "^5.3.4",
     "nodemon": "^2.0.16",
-    "pm2": "^5.1.2",
+    "pm2": "^6.0.14",
     "winston": "^3.7.2"
   },
   "devDependencies": {
