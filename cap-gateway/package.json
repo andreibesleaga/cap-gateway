@@ -12,6 +12,6 @@
   "license": "All rights reserved",
   "dependencies": {
     "cote": "^1.2.0",
-    "nodemon": "^2.0.16"
+    "nodemon": "^3.1.14"
   }
 }
