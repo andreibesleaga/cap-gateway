@@ -12,7 +12,7 @@
     "start:server": "pm2 start index.js --name gateway --log ../LOGS/APPLOG_gateway.log --time"
   },
   "dependencies": {
-    "body-parser": "^1.20.5",
+    "body-parser": "^1.20.6",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -21,7 +21,7 @@
     "express": "^4.22.2",
     "helmet": "^4.6.0",
     "libxmljs": "^1.0.11",
-    "morgan": "^1.10.1",
+    "morgan": "^1.11.0",
     "nodemon": "^3.1.11",
     "pm2": "^7.0.3",
     "rotating-file-stream": "^3.0.2",
