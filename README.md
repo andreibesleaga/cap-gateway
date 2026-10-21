@@ -167,9 +167,9 @@ npm 10.9.8, WSL2 Linux, Docker 29.8.1) after a fresh `npm ci` in all three packa
 | Lint / format | `npm run lint`, `npm run format:check` | 0 problems / all files formatted |
 | Unit (node:test) | `npm run test:unit` | 72 tests, 72 passed (same on 3 repeated runs) |
 | Coverage | `npm run test:coverage` (gate: 90 % lines) | services and middlewares 100 % lines, 98.95 % branches; all source 99.70 % lines |
-| BDD + e2e, stub engine (CI) | `npm run test:bdd` | 29 scenarios, 205 steps passed, about 14 s (same on 2 repeated runs) |
-| e2e, LibreTranslate in Docker | `npm run test:e2e:libre` | 18 scenarios, 142 steps passed (en, ro, fr, es, de, fi); container ready in 193 s (Finnish models downloaded), scenarios 35 s |
-| e2e, LLM (opt-in, not in CI) | `OPENROUTER_API_KEY=... npm run test:e2e:llm` | 9 scenarios, 69 steps passed; `google/gemini-3.5-flash-lite`, 7 requests, 0 retries, reported cost USD 0.001545 |
+| BDD + e2e, stub engine (CI) | `npm run test:bdd` | 29 scenarios, 205 steps passed, about 12 s (same on 2 repeated runs) |
+| e2e, LibreTranslate in Docker | `npm run test:e2e:libre` | 18 scenarios, 142 steps passed (en, ro, fr, es, de, fi); container ready in 11 s with cached models (about 190 s when a model is downloaded), scenarios 30 s |
+| e2e, LLM (opt-in, not in CI, run once) | `OPENROUTER_API_KEY=... npm run test:e2e:llm` | 9 scenarios, 69 steps passed; `google/gemini-3.5-flash-lite`, 7 requests, 0 retries, reported cost USD 0.001545 |
 
 The DeepL, Microsoft, Yandex and MyMemory clients are **contract-tested with a mocked `fetch`, not live-verified**.
 
