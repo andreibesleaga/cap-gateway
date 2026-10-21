@@ -33,6 +33,7 @@ not the code under test.
 
 ## Recorded results, 2026-10-21
 
+Final run 15:03 to 15:06 EEST on the tree handed over for commit (LLM tier: run once earlier the same day).
 Node 22.22.3, npm 10.9.8, WSL2 Linux 6.6, Docker 29.8.1, fresh `npm ci` in all three packages.
 
 | Tier | Result |
@@ -42,8 +43,8 @@ Node 22.22.3, npm 10.9.8, WSL2 Linux 6.6, Docker 29.8.1, fresh `npm ci` in all t
 | Unit | 72 tests (3 suites), 72 passed, 0 failed; identical on 3 repeated runs |
 | Coverage, gated paths | 100 % lines, 98.95 % branches, 100 % functions (`services/cap.js`, `capXml.js`, `translator.js`, `sanitize.js`, `schemaValidator.js`) |
 | Coverage, all source | 99.70 % lines, 95.71 % branches (uncovered: parsing of a set numeric variable in `gateway/constants.js`, lines 4 and 6) |
-| BDD, stub e2e | 29 scenarios, 205 steps passed, 13.5 s; identical on 2 repeated runs |
-| e2e LibreTranslate | 18 scenarios, 142 steps passed, languages en, ro, fr, es, de, fi; container ready in 193.4 s (this start downloaded the Finnish models), scenarios 34.5 s; container stopped afterwards |
+| BDD, stub e2e | 29 scenarios, 205 steps passed, 12.0 to 12.4 s; identical on 2 repeated runs |
+| e2e LibreTranslate | 18 scenarios, 142 steps passed, languages en, ro, fr, es, de, fi, with `--update-models`; container ready in 11.1 s (models cached), scenarios 30.1 s; container stopped afterwards. The first start after Finnish was added took 193.4 s to download its models |
 | e2e LLM (run once, before Finnish was added; Finnish is not in the `@llm` set, which is unchanged) | 9 scenarios, 69 steps passed, 10.9 s; model `google/gemini-3.5-flash-lite`, 7 requests, 0 retries, cost reported by OpenRouter USD 0.001545 |
 | `npm audit` (each package) | 3 moderate, 0 high, 0 critical: the single `uuid` advisory through `cote` (see `SECURITY.md`) |
 
