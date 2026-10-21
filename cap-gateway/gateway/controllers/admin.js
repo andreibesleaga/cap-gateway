@@ -1,20 +1,11 @@
-import cote from 'cote';
-import { Endpoints, SERVICE_TIMEOUT } from '../constants.js';
+import { Endpoints } from '../constants.js';
 import { sanitizeParams } from '../middlewares/sanitize.js';
-import { sendFailure, sendServiceReply } from '../errors.js';
+import { sendToMesh } from '../mesh.js';
 
-const Endpoint = Endpoints.admin;
-
-export function registerAdminCalls(app) {
-  // one requester per route; cote balances its requests over the discovered responders
-  const requester = new cote.Requester({ name: 'admin_requester_pubsub', timeout: SERVICE_TIMEOUT });
-
-  app.post(Endpoint.pubsub, sanitizeParams, async (req, res) => {
-    try {
-      const reply = await requester.send({ type: 'start' });
-      return sendServiceReply(res, reply);
-    } catch (error) {
-      return sendFailure(res, error);
-    }
+// POST /app/admin/services/pubsub: starts the demo heartbeat publisher on one responder
+export function registerAdminCalls(app, requester) {
+  app.post(Endpoints.admin.pubsub, sanitizeParams, async (req, res) => {
+    const { reply, status, error } = await sendToMesh(requester, { type: 'start' });
+    return error ? res.status(status).json({ error }) : res.json(reply);
   });
 }

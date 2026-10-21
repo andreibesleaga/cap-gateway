@@ -1,1 +1,11 @@
-# cap-gateway: archived proof of concept (2024) that translates CAP 1.2 alerts into English through a Node.js mesh of microservices. Start with README.md (purpose, architecture, quick start, API, configuration, limitations).
+# cap-gateway
+
+> Archived proof of concept (2024, exemplar pass 2026): a Node.js gateway and responder mesh (cote) that validates CAP 1.2 alerts against the OASIS schema and appends an English (en-US) <info> block translated by LibreTranslate, an LLM via OpenRouter, or other engines, leaving the original alert unchanged.
+
+- [README](README.md): purpose, diagrams, quick start per engine, configuration, before/after XML, status codes, recorded test results, limitations
+- [Architecture](docs/ARCHITECTURE.md): files, translation flow, engines
+- [Testing](docs/TESTING.md): tiers, scenarios by persona, recorded results
+- [Operations](docs/OPERATIONS.md): processes, health, logs, timeouts, engine choice
+- [ADRs](docs/adr/): append English block, engines and LLM contract, failure behaviour
+- [Security](SECURITY.md): input handling, API keys, data sent to third parties, dependency state
+- [Changelog](CHANGELOG.md)

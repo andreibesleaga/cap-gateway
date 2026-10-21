@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>EXAMPLE-DE-0001</identifier>
+  <sender>alerts@example.org</sender>
+  <sent>2024-08-05T13:00:00+02:00</sent>
+  <status>Exercise</status>
+  <msgType>Alert</msgType>
+  <scope>Public</scope>
+  <info>
+    <language>de-DE</language>
+    <category>Met</category>
+    <event>Hochwasser</event>
+    <responseType>Evacuate</responseType>
+    <urgency>Immediate</urgency>
+    <severity>Severe</severity>
+    <certainty>Observed</certainty>
+    <headline>Hochwasserwarnung</headline>
+    <description>Starke Regenfälle führen zu Hochwasser an den Flüssen der Region. Der Wasserstand steigt weiter.</description>
+    <instruction>Verlassen Sie sofort die tief liegenden Gebiete und suchen Sie höher gelegene Orte auf.</instruction>
+    <area>
+      <areaDesc>Landkreis Beispiel</areaDesc>
+    </area>
+  </info>
+</alert>

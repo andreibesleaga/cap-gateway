@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # manual run: also runs the LibreTranslate tier
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: cap-gateway
+
+jobs:
+  test:
+    name: Lint, unit, BDD (stub engine)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: cap-gateway/**/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: cap-gateway/gateway
+      - run: npm ci
+        working-directory: cap-gateway/responder-microservices
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run test:coverage
+      - run: npm run test:bdd
+
+  libretranslate:
+    name: E2E against LibreTranslate (Docker)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: cap-gateway/**/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: cap-gateway/gateway
+      - run: npm ci
+        working-directory: cap-gateway/responder-microservices
+      - run: npm run test:e2e:libre

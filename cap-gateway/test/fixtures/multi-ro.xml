@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>EXAMPLE-RO-MULTI</identifier>
+  <sender>alerte@example.ro</sender>
+  <sent>2024-08-05T13:00:00+03:00</sent>
+  <status>Exercise</status>
+  <msgType>Alert</msgType>
+  <scope>Public</scope>
+  <info>
+    <language>ro-RO</language>
+    <category>Met</category>
+    <event>Ploi abundente</event>
+    <urgency>Expected</urgency>
+    <severity>Moderate</severity>
+    <certainty>Likely</certainty>
+    <headline>Avertizare de ploi abundente</headline>
+    <description>Sunt așteptate ploi abundente care pot provoca inundații.</description>
+    <instruction>Evitați deplasările în apropierea râurilor.</instruction>
+    <area>
+      <areaDesc>Județul Exemplu</areaDesc>
+    </area>
+  </info>
+  <info>
+    <language>ro-RO</language>
+    <category>Met</category>
+    <event>Vânt puternic</event>
+    <urgency>Expected</urgency>
+    <severity>Moderate</severity>
+    <certainty>Likely</certainty>
+    <headline>Avertizare de vânt puternic</headline>
+    <description>Rafalele de vânt pot depăși 80 km/h în zonele montane.</description>
+    <instruction>Asigurați obiectele care pot fi luate de vânt.</instruction>
+    <area>
+      <areaDesc>Zona montană Exemplu</areaDesc>
+    </area>
+  </info>
+</alert>

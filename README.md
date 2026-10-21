@@ -1,177 +1,202 @@
 # CAP Translation Gateway
 
-**Archived proof of concept (2024, deprecated).** A distributed mesh of Node.js microservices that takes a
-[Common Alerting Protocol 1.2](https://docs.oasis-open.org/emergency/cap/v1.2/CAP-v1.2.html) alert (XML), validates it
-against the OASIS schema, translates the free-text fields of its `<info>` block(s) into English through an external
-translation API, and returns the alert as XML (or, optionally, as JSON). It was written to explore the idea of making
-alerts readable in a common language without changing the systems that emit them (background:
-[article](https://medium.com/@andrei-besleaga/innovative-usage-of-emerging-it-technologies-in-multi-hazard-early-warning-systems-7bcfe3d170b9)).
-This final "exemplar pass" (October 2026) made it run, verified it, and documented what the code actually does.
-It is kept as an example of an early project, not as something to deploy.
+**Archived proof of concept (2024, deprecated).** A small mesh of Node.js services that receives a
+[Common Alerting Protocol 1.2](https://docs.oasis-open.org/emergency/cap/v1.2/CAP-v1.2.html) alert (XML), checks it
+against the OASIS schema and, when the alert has no English `<info>` block, **appends one**: a copy of the original
+block with `<language>en-US</language>` and its free-text fields translated. The original alert is never changed
+(background: [article](https://medium.com/@andrei-besleaga/innovative-usage-of-emerging-it-technologies-in-multi-hazard-early-warning-systems-7bcfe3d170b9)).
+The October 2026 exemplar pass made it run, tested it at four levels and documented what the code does. It is kept
+as an example of an early project, not as something to deploy.
 
 ## Architecture
 
-Two kinds of processes, discovered and connected by [cote](https://github.com/dashersw/cote) (zero-configuration
-mesh: UDP broadcast discovery, TCP request/response, round-robin over the responders found).
+### System
 
 ```mermaid
 flowchart LR
-  C["Client<br/>POST /app/cap/translate<br/>{ message: CAP XML, exportJson? }"] --> G
-  subgraph G["gateway (Express, port 5000)"]
+  C["Client<br/>alerting authority or application"] -->|"POST /app/cap/translate<br/>{message: CAP XML, exportJson?}"| SAN
+  OP["Operator"] -->|"GET /health"| H
+  subgraph G["gateway (Express 5, APP_PORT 5000)"]
     direction LR
-    M["helmet, compression,<br/>json, access log"] --> S["sanitizeParams<br/>(size limits, trim)"] --> V["schemaValidator<br/>(CAP 1.2 XSD, libxmljs2)"] --> R["cote Requester<br/>type: translate"]
+    SAN["sanitize<br/>JSON object, size, names"] --> VAL["validate<br/>no DOCTYPE, cap.xsd"] --> REQ["cote Requester<br/>SERVICE_TIMEOUT"]
+    H["/health<br/>responders connected"]
   end
-  R -. "mesh (UDP discovery + TCP)" .-> Q
-  subgraph P["responder-microservices (1..n instances)"]
+  SAN -. "400 / 413" .-> C
+  VAL -. "400 + details" .-> C
+  REQ -. "503 no responder / 504 timeout" .-> C
+  REQ -- "cote mesh: UDP discovery, TCP, round-robin" --> RES
+  subgraph P["responder (1..n processes, same program)"]
     direction LR
-    Q["cote Responder<br/>translate | start"] --> CS["services/cap.js<br/>parse XML, translate<br/>info fields, rebuild"] --> T["services/translator.js<br/>translateWithLibre"]
+    RES["cote Responder"] --> SEL["services/cap.js<br/>select source blocks"] --> TR["services/translator.js<br/>TRANSLATOR_ENGINE"]
+    SEL --> APP["services/capXml.js<br/>append en-US copies"]
   end
-  T --> E[("Translation API<br/>TRANSLATOR_URL")]
+  TR --> E[("LibreTranslate / LLM via OpenRouter /<br/>DeepL / Microsoft / Yandex / MyMemory")]
+  REQ -- "200, X-Translation: passthrough, translated or failed" --> C
 ```
 
-Message flow for `POST /app/cap/translate`:
+### One request
 
-1. `gateway/middlewares/sanitize.js`: every body parameter is checked (name <= 50 chars, value <= 100 000 chars,
-   JSON body <= 100 kB by Express default), strings are trimmed and control characters stripped.
-2. `gateway/middlewares/schemaValidator.js`: `message` must be well-formed XML valid against `cap-gateway/cap.xsd`
-   (CAP 1.2), otherwise `400`.
-3. `gateway/controllers/cap.js` sends `{ type: 'translate', message, exportJson }` to the mesh and waits
-   `SERVICE_TIMEOUT` ms for one responder.
-4. `responder-microservices/services/cap.js` parses the XML (fast-xml-parser, values kept as strings). If the first
-   `<info><language>` starts with `en` (or is absent, which CAP defines as `en-US`) the message is returned as
-   received. Otherwise every string inside each `<info>` block is sent to the translation engine, except the
-   enumerated/identifying fields `language, category, responseType, urgency, severity, certainty, effective, onset,
-   expires, senderName, headline, web, contact` (and the `<alert>` header, which is never touched). Translated text
-   replaces the original in place; a field whose translation fails keeps its original text (logged as a warning).
-5. The result is rebuilt as XML (default) or returned as the parsed object when `exportJson` is `true`.
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant G as gateway
+  participant R as responder
+  participant E as engine
+  C->>G: POST {message: CAP XML, exportJson?}
+  G->>G: JSON + size check, XSD validation (400/413 on failure)
+  G->>R: translate (503 if no responder, 504 after SERVICE_TIMEOUT)
+  alt English <info> present, or no <language> (= en-US)
+    R-->>G: passthrough: alert as received
+  else first <info> language is not English
+    R->>E: one call per block in that language (free-text fields only)
+    E-->>R: English texts (or error / timeout)
+    R-->>G: translated: alert + appended en-US block(s), or failed: alert as received
+  end
+  G-->>C: 200 XML (or JSON), header X-Translation
+```
 
-`POST /app/admin/services/pubsub` is a demo of mesh pub/sub: the responder that receives it starts a publisher that
-broadcasts a random value every 30 s; every responder logs what it receives.
+Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Decisions: [docs/adr/](docs/adr/).
 
 ## Quick start
 
-Requires Node >= 20 (verified with Node 22.22.3, npm 11.16.0; `.nvmrc` says 22) and a C++ toolchain only if no
-prebuilt `libxmljs2` binary exists for your platform.
+Node 22 (`.nvmrc`; tested with 22.22.3 and npm 10.9.8). From `cap-gateway/`:
 
 ```bash
-git clone https://github.com/andreibesleaga/cap-gateway && cd cap-gateway/cap-gateway
-npm ci && (cd responder-microservices && npm ci) && (cd gateway && npm ci)
-npm test                                   # smoke test, no network needed (see below)
+npm ci && (cd gateway && npm ci) && (cd responder-microservices && npm ci)
+npm test                       # unit + BDD with the stub engine, no network, about 15 s
 ```
 
-Run it by hand (two terminals, from `cap-gateway/`):
+Run the services (two terminals, or `npm start` with a global [PM2](https://pm2.keymetrics.io/) for one gateway and
+two responders):
 
 ```bash
-cd responder-microservices && npm start    # as many times as you want responders
-cd gateway && npm start                    # API Gateway listening at http://localhost:5000
-```
+# LibreTranslate (default engine), self-hosted:
+docker run -d --rm --name libre -p 127.0.0.1:5055:5000 libretranslate/libretranslate:v1.9.6 \
+  --load-only en,ro,fr,es,de,fi --update-models   # first start downloads the models
+cd responder-microservices && TRANSLATOR_URL=http://127.0.0.1:5055/translate npm start
+# or an LLM through OpenRouter:
+cd responder-microservices && TRANSLATOR_ENGINE=llm OPENROUTER_API_KEY=... npm start
+# or a test run without any engine:
+cd responder-microservices && TRANSLATOR_ENGINE=stub npm start
 
-Or with PM2 installed globally (`npm i -g pm2`): `npm start` runs `pm2 start all.json` (one gateway, two responders,
-logs in `cap-gateway/LOGS/`); `pm2 kill` stops everything. `npm run monitor` opens the cote mesh monitor
-(`monitor.js`, web UI on port 5555).
-
-Send a sample alert:
-
-```bash
+cd gateway && npm start        # http://localhost:5000
 curl -s -X POST http://localhost:5000/app/cap/translate -H 'content-type: application/json' \
   --data-binary "$(node -e "console.log(JSON.stringify({message: require('fs').readFileSync('samples/alert-ro.xml','utf-8')}))")"
 ```
 
-Without a reachable translation engine the Romanian sample comes back unchanged (per-field fallback) with status
-`200`. The public `https://libretranslate.com` instance needs an API key (`TRANSLATOR_KEY`); a self-hosted
-[LibreTranslate](https://github.com/LibreTranslate/LibreTranslate) works without one
-(`TRANSLATOR_URL=http://localhost:5050/translate`, for example).
-
 ## Configuration
 
-All settings are environment variables read in `gateway/constants.js` and `responder-microservices/constants.js`;
-the defaults are the values the project always used.
+Environment variables, read once at start-up; an invalid value stops the process with a clear message.
 
 | Variable | Process | Default | Meaning |
 | --- | --- | --- | --- |
-| `APP_PORT` | gateway | `5000` | HTTP(S) listen port |
+| `TRANSLATOR_ENGINE` | responder | `libretranslate` | `libretranslate`, `llm`, `deepl`, `microsoft`, `yandex`, `mymemory`, `stub` |
+| `TRANSLATOR_URL` | responder | engine's public endpoint | Overrides the endpoint (not used by `llm`) |
+| `TRANSLATOR_KEY` | responder | empty | API key; required for `deepl`, `microsoft`, `yandex`; optional for LibreTranslate and MyMemory |
+| `TRANSLATOR_REGION` | responder | empty | Azure region header for `microsoft` |
+| `TRANSLATOR_TIMEOUT` | responder | `8000` | Milliseconds per engine request |
+| `OPENROUTER_API_KEY` | responder | none | Required for `llm` |
+| `LLM_BASE_URL` | responder | `https://openrouter.ai/api/v1` | Any OpenAI-compatible Chat Completions API |
+| `LLM_MODEL` | responder | `google/gemini-3.5-flash-lite` | Model id |
+| `APP_PORT` | gateway | `5000` | Listen port |
+| `NODE_ENV` | gateway | `development` | `production` serves HTTPS with `cap-gateway/key.pem` and `cert.pem` |
+| `SERVICE_TIMEOUT` | gateway | `20000` | Milliseconds to wait for a responder |
+| `BODY_LIMIT` | gateway | `100kb` | Largest JSON body |
+| `ACCESS_LOGS_DIR` | gateway | `./LOGS` | Rotating access log directory; empty disables it |
 | `APP_URL` | gateway | `http://localhost` | Only used in the start-up log line |
-| `NODE_ENV` | gateway | `development` | `production` serves HTTPS with `cap-gateway/key.pem` and `cap-gateway/cert.pem` |
-| `ACCESS_LOGS_DIR` | gateway | `./LOGS` | Directory (relative to the working directory) for the rotating Apache-style `access.log`; empty disables it |
-| `SERVICE_TIMEOUT` | gateway | `3000` | Milliseconds to wait for a responder before answering `500` |
-| `TRANSLATOR_URL` | responder | `https://libretranslate.com/translate` | LibreTranslate-compatible `POST /translate` endpoint |
-| `TRANSLATOR_KEY` | responder | empty | API key sent as `api_key` (LibreTranslate) or used by the alternative engines |
+| `LOG_LEVEL` | both | `info` | `error`, `warn`, `info`, `debug` |
 
-Only `translateWithLibre` is wired in. `services/translator.js` also contains Yandex, DeepL, Microsoft and MyMemory
-clients with the same `(text, source, target)` signature; switching means passing one of them as the third argument
-of `CapService.translate` (there is no runtime switch).
+## What comes back
 
-## Message formats
+Request: `{ "message": "<CAP 1.2 XML>", "exportJson": false }`. Before (`samples/alert-ro.xml`, shortened) and after,
+as returned with the default engine (LibreTranslate 1.9.6, recorded 2026-10-21):
 
-Request (JSON): `{ "message": "<CAP 1.2 XML as a string>", "exportJson": false }`.
+```xml
+<info>
+  <language>ro-RO</language>
+  <category>Met</category>
+  <event>Furtună puternică</event>
+  <urgency>Expected</urgency> ...
+  <headline>Avertizare de furtună puternică</headline>
+  <description>Sunt așteptate furtuni cu grindină și vânt puternic în această după-amiază.</description>
+  <instruction>Rămâneți în interior, departe de ferestre.</instruction>
+  <area><areaDesc>Județul Exemplu</areaDesc></area>
+</info>
+<!-- appended by the gateway; the block above is returned byte for byte -->
+<info>
+  <language>en-US</language>
+  <category>Met</category>
+  <event>Strong storm</event>
+  <urgency>Expected</urgency> ...
+  <headline>Strong storm warning</headline>
+  <description>Storms with hail and strong wind are expected this afternoon.</description>
+  <instruction>Stay inside, away from the windows.</instruction>
+  <area><areaDesc>Example County</areaDesc></area>
+</info>
+```
 
-Responses:
+Translated fields: `event, audience, senderName, headline, description, instruction, contact, resourceDesc,
+areaDesc`. Everything else in the block (categories, response types, urgency, severity, certainty, event codes,
+dates, web, parameters, resource MIME type and URI, polygons, circles, geocodes, altitude, ceiling) is copied
+verbatim. The `<alert>` header is never touched. The output validates against `cap.xsd`.
 
-| Case | Status | Body |
+| Case | Status | `X-Translation` | Body |
+| --- | --- | --- | --- |
+| English `<info>` present, or no `<language>` | 200 | `passthrough` | the alert as received (trimmed) |
+| Non-English alert, engine succeeded | 200 | `translated` | the alert plus one en-US block per block in the first `<info>`'s language |
+| Engine failed (network, timeout, HTTP error, invalid answer) | 200 | `failed` | the alert as received, nothing appended |
+| `exportJson: true` (boolean only) | 200 | as above | the same alert parsed to JSON (`@_` attributes, several `<info>` as an array) |
+| Not a string / DOCTYPE / not well-formed / not CAP 1.2 | 400 | none | `{ "error": ..., "details"?: [...] }` |
+| Body not JSON | 400 | none | `{ "error": "Malformed Request" }` |
+| Body over `BODY_LIMIT` | 413 | none | `{ "error": "Request body larger than 100kb" }` |
+| No responder connected | 503 | none | `{ "error": "No translation responder available" }` (immediately) |
+| No responder reply in `SERVICE_TIMEOUT` | 504 | none | `{ "error": "No responder replied within ... ms" }` |
+| Unexpected responder or mesh error | 500 | none | `{ "error": ... }` |
+| `GET /health` | 200 / 503 | none | `{ "status": "ok" \| "unavailable", "responders": n }` |
+| Unknown route | 404 | none | `{ "error": "Not found" }` |
+
+Why an engine failure is still a `200`: [docs/adr/0003-failure-behaviour.md](docs/adr/0003-failure-behaviour.md).
+
+## Tests
+
+From `cap-gateway/`, details in [docs/TESTING.md](docs/TESTING.md). Results recorded on 2026-10-21 (Node 22.22.3,
+npm 10.9.8, WSL2 Linux, Docker 29.8.1) after a fresh `npm ci` in all three packages:
+
+| Tier | Command | Result |
 | --- | --- | --- |
-| English alert (or no `<language>`) | 200 | the XML exactly as received (trimmed), or the parsed object if `exportJson` |
-| Non-English alert | 200 | the same XML with the translated `<info>` text fields replaced in place; `<language>` is left as in the input |
-| `exportJson: true` | 200 | JSON object: `{ "?xml": {...}, "alert": { "identifier": ..., "info": {...}, "@_xmlns": "urn:oasis:names:tc:emergency:cap:1.2" } }` (attributes are prefixed `@_`; several `<info>` become an array) |
-| `message` not well-formed XML | 400 | `{ "error": "message is not well-formed XML" }` |
-| Well-formed but not CAP 1.2 | 400 | `{ "error": "XML does not conform to the Common Alert Protocol 1.2 XSD Schema" }` |
-| Body parameter too large / malformed | 400 | `{ "error": "Malformed Request" }` |
-| No responder within `SERVICE_TIMEOUT` | 500 | `{ "error": "Request timed out." }` |
-| Unknown route | 404 | `{ "error": "Not found" }` |
+| Lint / format | `npm run lint`, `npm run format:check` | 0 problems / all files formatted |
+| Unit (node:test) | `npm run test:unit` | 72 tests, 72 passed (same on 3 repeated runs) |
+| Coverage | `npm run test:coverage` (gate: 90 % lines) | services and middlewares 100 % lines, 98.95 % branches; all source 99.70 % lines |
+| BDD + e2e, stub engine (CI) | `npm run test:bdd` | 29 scenarios, 205 steps passed, about 14 s (same on 2 repeated runs) |
+| e2e, LibreTranslate in Docker | `npm run test:e2e:libre` | 18 scenarios, 142 steps passed (en, ro, fr, es, de, fi); container ready in 193 s (Finnish models downloaded), scenarios 35 s |
+| e2e, LLM (opt-in, not in CI) | `OPENROUTER_API_KEY=... npm run test:e2e:llm` | 9 scenarios, 69 steps passed; `google/gemini-3.5-flash-lite`, 7 requests, 0 retries, reported cost USD 0.001545 |
 
-Samples: `cap-gateway/samples/alert-en.xml`, `cap-gateway/samples/alert-ro.xml`. Encoding is UTF-8 throughout; the
-XML declaration and the CAP namespace are preserved on output.
-
-## Tests and checks
-
-From `cap-gateway/`:
-
-- `npm test` runs `scripts/smoke.mjs`: part A calls the translation service in-process with a stub engine
-  (English passthrough, in-place translation, skipped fields, lossless declaration/namespace, JSON export, missing
-  language); part B starts a stub translation HTTP server plus one responder and the gateway as child processes and
-  checks the real HTTP path (404, 400 malformed, 400 non-CAP, 200 English, 200 translated, JSON export). 16 checks,
-  deterministic, no external network.
-- `npm run lint` (ESLint 10, `eslint.config.js`) and `npm run format:check` / `npm run format` (Prettier 3).
+The DeepL, Microsoft, Yandex and MyMemory clients are **contract-tested with a mocked `fetch`, not live-verified**.
 
 ## Project layout
 
 ```
-cap-gateway/                      project root (PM2 file, mesh monitor, toolchain, smoke test)
-  all.json                        PM2 process file: gateway + two responders
-  cap.xsd                         OASIS CAP 1.2 schema (copyright OASIS Open 2010)
-  monitor.js                      cote MonitoringTool (mesh dashboard)
-  eslint.config.js, .prettierrc   shared lint/format configuration
-  samples/                        valid CAP 1.2 alerts (en, ro)
-  scripts/smoke.mjs               smoke test (npm test)
-  gateway/                        Express API gateway
-    index.js                      server, middleware, routes, HTTP/HTTPS
-    constants.js                  configuration (env) and endpoint paths
-    errors.js                     error/reply helpers
-    controllers/{cap,admin}.js    routes -> cote requesters
-    middlewares/{sanitize,schemaValidator}.js
-    logger.js                     winston console logger
-  responder-microservices/        cote responder (run 1..n instances)
-    index.js                      responder + demo subscriber
-    constants.js                  translation engine settings (env)
-    controllers/{cap,admin}.js
-    services/cap.js               parse -> translate <info> -> rebuild
-    services/translator.js        translation engine clients
-    logger.js
+cap-gateway/                 PM2 file (all.json), mesh monitor (monitor.js), cap.xsd, toolchain, tests
+  gateway/                   Express gateway: app.js (routes), mesh.js, middlewares/, controllers/
+  responder-microservices/   cote responder: config.js, services/{cap,capXml,translator}.js
+  samples/                   valid CAP 1.2 alerts: en, ro, fr, es, de, fi
+  test/                      unit tests, fixtures, test helpers (fake fetch, fake engines, mesh launcher)
+  features/                  BDD scenarios by persona, step definitions
+  scripts/                   e2e-libre.mjs (Docker), e2e-llm.mjs (opt-in)
+docs/                        ARCHITECTURE, TESTING, OPERATIONS, adr/
 ```
 
-Each of the three directories has its own `package.json` and lockfile; the gateway and the responders share no code.
+## Limitations
 
-## Status and limitations
-
-- Deprecated and archived; no further development. Kept runnable and documented as an early-project exemplar.
-- No authentication, no rate limiting, no TLS on the mesh; cote discovery is open UDP broadcast on the local network.
-- Translation replaces the original `<info>` text; the original language is not kept alongside and `<language>`
-  still carries the source code. Every string in `<info>` not in the skip list is sent to the engine, including
-  `<polygon>`/`<circle>`/`<geocode>` values and `<parameter>` names.
-- One translation request per field, sequential; a slow engine can exceed `SERVICE_TIMEOUT` (3 s default).
-- Only the first `<info>` decides the language; the others are translated with that same source language.
-- Transitive `uuid@3.4.0` (through `cote`) has an unpatchable moderate advisory; see `SECURITY.md`.
+- Deprecated and archived; no further development.
+- No authentication, no rate limiting, no TLS on the mesh; cote finds peers by open UDP broadcast on the local network.
+  Do not expose it to untrusted networks ([SECURITY.md](SECURITY.md)).
+- Machine translation of public-safety text can be wrong; the original block stays authoritative.
+- Only the language of the first `<info>` is translated (see [ADR 0001](docs/adr/0001-append-english-info-block.md)).
+- Alert text is sent to the configured engine; with a hosted engine or the LLM it leaves your network.
+- Transitive `uuid@3.4.0` (through `cote`) carries one moderate advisory with no fix in `cote`; see [SECURITY.md](SECURITY.md).
 
 ## Licence
 
-MIT, Copyright (c) 2024-2026 Andrei N. Besleaga. `cap-gateway/cap.xsd` is the OASIS CAP 1.2 schema
-(Copyright OASIS Open 2010, all rights reserved, redistributed unchanged).
+MIT, Copyright (c) 2024-2026 Andrei N. Besleaga. `cap-gateway/cap.xsd` is the OASIS CAP 1.2 schema (Copyright OASIS
+Open 2010), redistributed unchanged.

@@ -1,6 +1,38 @@
 # Changelog
 
-## Unreleased - exemplar pass (2026-10-21)
+## Unreleased - exemplar pass, second part (2026-10-21)
+
+### Changed
+- Translation output follows CAP 1.2 practice: the alert is returned unchanged and an English copy of each
+  source-language `<info>` block is appended with `<language>en-US</language>`; only free-text fields are
+  translated, everything else is copied verbatim ([ADR 0001](docs/adr/0001-append-english-info-block.md)).
+  Previously the text was replaced in place and `<language>` kept the source code.
+- No English block is added when one exists; a missing `<language>` counts as `en-US`.
+- `TRANSLATOR_ENGINE` selects the engine at start-up: `libretranslate` (default), `llm`, `deepl`, `microsoft`,
+  `yandex`, `mymemory`, `stub`. One request per `<info>` block instead of one per field.
+- Engine failure returns the original alert with `200` and `X-Translation: failed`, never a partly translated
+  block ([ADR 0003](docs/adr/0003-failure-behaviour.md)).
+- No responder: `503` at once instead of `500` after the timeout; responder timeout: `504`. Body over `BODY_LIMIT`
+  (default 100 kB): `413`. Body errors are JSON.
+- `SERVICE_TIMEOUT` default 3000 ms -> 20000 ms; new `TRANSLATOR_TIMEOUT` (8000 ms). Invalid configuration stops
+  the process at start-up. Node 22 required (`engines`).
+- Gateway split into `app.js` (testable without network) and `mesh.js`; responder configuration in `config.js`.
+- Alternative engine clients updated to the current DeepL, Microsoft Translator v3, Yandex Cloud v2 and MyMemory APIs.
+
+### Added
+- `llm` engine: OpenAI-compatible Chat Completions (OpenRouter by default, `google/gemini-3.5-flash-lite`),
+  temperature 0, strict JSON contract, one retry ([ADR 0002](docs/adr/0002-translation-engines-and-llm-contract.md)).
+- `X-Translation` response header (`translated`, `passthrough`, `failed`) and `GET /health`.
+- DOCTYPE declarations refused before parsing; schema errors returned in `details` (at most 5).
+- Tests: unit (`node:test`, 72 tests, 90 % line gate), BDD with personas (`@cucumber/cucumber`, 29 scenarios on real
+  processes with the stub engine), e2e against LibreTranslate in Docker and an opt-in LLM tier; GitHub Actions CI.
+- Samples in French, Spanish, German and Finnish; test fixtures; `docs/` (architecture, testing, operations, three ADRs).
+
+### Removed
+- `scripts/smoke.mjs` (replaced by the test tiers above), `gateway/errors.js`, `responder-microservices/constants.js`.
+- Dependencies `axios` (responder; built-in `fetch` with `AbortSignal.timeout` instead) and `validator` (gateway).
+
+## Unreleased - exemplar pass, first part (2026-10-21, commit 5c733bd)
 
 Final clean-up before archiving. No new features; the behaviour described in the README is what the code does.
 

@@ -1,29 +1,28 @@
 import cote from 'cote';
 import logger from './logger.js';
-
+import { parseConfig, describeConfig } from './config.js';
+import { createEngine } from './services/translator.js';
+import { createCapService } from './services/cap.js';
+import { createCapController } from './controllers/cap.js';
 import AdminController from './controllers/admin.js';
-import CapController from './controllers/cap.js';
 
-// Setup microservice responders
-const service_responder = new cote.Responder({ name: 'service_responder' });
+let config;
+try {
+  config = parseConfig(process.env);
+} catch (error) {
+  logger.error('invalid configuration: %s', error.message);
+  process.exit(1);
+}
+logger.info('responder starting: %s', describeConfig(config));
 
-// Messages
-service_responder.on('translate', async (req, cb) => {
-  cb(null, await CapController.translate(req));
-});
+const engine = createEngine(config, { logger });
+const capController = createCapController({ service: createCapService({ engine, logger }), logger });
 
-// Admin
-service_responder.on('start', async (req, cb) => {
-  cb(null, await AdminController.pubsub(req));
-});
+// one responder per process; the gateway balances requests over all responders it discovers
+const responder = new cote.Responder({ name: 'service_responder' });
+responder.on('translate', (req, cb) => capController.translate(req).then(result => cb(null, result)));
+responder.on('start', (req, cb) => AdminController.pubsub(req).then(result => cb(null, result)));
 
-// subscribe for microservice events
-const randomSubscriber = new cote.Subscriber({
-  name: 'Random Subscriber',
-  // namespace: 'rnd',
-  // key: 'a certain key',
-  subscribesTo: ['randomUpdate'],
-});
-randomSubscriber.on('randomUpdate', req => {
-  logger.info('notified of ', req);
-});
+// demo subscriber for the pub/sub heartbeat started by POST /app/admin/services/pubsub
+const randomSubscriber = new cote.Subscriber({ name: 'Random Subscriber', subscribesTo: ['randomUpdate'] });
+randomSubscriber.on('randomUpdate', req => logger.info('notified of %j', req));

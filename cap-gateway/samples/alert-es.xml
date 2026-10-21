@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>EXAMPLE-ES-0001</identifier>
+  <sender>alerts@example.org</sender>
+  <sent>2024-08-05T13:00:00+02:00</sent>
+  <status>Exercise</status>
+  <msgType>Alert</msgType>
+  <scope>Public</scope>
+  <info>
+    <language>es-ES</language>
+    <category>Met</category>
+    <event>Inundación</event>
+    <responseType>Evacuate</responseType>
+    <urgency>Immediate</urgency>
+    <severity>Severe</severity>
+    <certainty>Observed</certainty>
+    <headline>Aviso de inundación</headline>
+    <description>Las lluvias intensas están causando inundaciones en las zonas bajas cerca del río.</description>
+    <instruction>Abandone inmediatamente las zonas bajas y diríjase a terrenos más altos.</instruction>
+    <area>
+      <areaDesc>Valle del Ejemplo</areaDesc>
+    </area>
+  </info>
+</alert>

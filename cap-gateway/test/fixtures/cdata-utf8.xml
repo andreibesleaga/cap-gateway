@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>EXAMPLE-RO-CDATA</identifier>
+  <sender>alerte@example.ro</sender>
+  <sent>2024-08-05T13:00:00+03:00</sent>
+  <status>Exercise</status>
+  <msgType>Alert</msgType>
+  <scope>Public</scope>
+  <info>
+    <!-- comment inside info: </info> must not confuse the gateway -->
+    <language>ro-RO</language>
+    <category>Met</category>
+    <event>Caniculă</event>
+    <urgency>Expected</urgency>
+    <severity>Severe</severity>
+    <certainty>Likely</certainty>
+    <headline>Avertizare de caniculă &amp; secetă</headline>
+    <description><![CDATA[Temperaturi de peste 40 °C în sudul țării; indicele temperatură-umezeală > 80 & disconfort termic accentuat.]]></description>
+    <instruction>Beți apă, evitați expunerea la soare între orele 11 și 17. Îngrijiți-vă de vârstnici și copii.</instruction>
+    <area>
+      <areaDesc>Câmpia Română și Dobrogea</areaDesc>
+    </area>
+  </info>
+</alert>
