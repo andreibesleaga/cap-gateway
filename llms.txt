@@ -1,0 +1,1 @@
+# cap-gateway: archived proof of concept (2024) that translates CAP 1.2 alerts into English through a Node.js mesh of microservices. Start with README.md (purpose, architecture, quick start, API, configuration, limitations).

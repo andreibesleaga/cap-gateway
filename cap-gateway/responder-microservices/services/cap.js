@@ -9,23 +9,22 @@ import logger from '../logger.js';
  */
 const getError = error => ({
   error: error?.response?.data ?? error?.response?.message ?? error?.message ?? error,
-  details: error?.stack
+  details: error?.stack,
 });
 
 /**
  * Gets language from CAP alert
  * @param {Object} alertData - Parsed CAP alert data
- * @returns {string} Language code or null
+ * @returns {string} Language code of the first <info> block ("en-US" when absent)
  */
 const getLanguage = alertData => {
   try {
-    if (Array.isArray(alertData.alert.info)) {
-      return alertData.alert.info[0].language ?? 'autodetect';
-    }
-    return alertData.alert.info.language ?? 'autodetect';
+    // CAP 1.2 section 3.2.2: when <language> is absent, "en-US" is implied.
+    const info = Array.isArray(alertData.alert.info) ? alertData.alert.info[0] : alertData.alert.info;
+    return info.language ?? 'en-US';
   } catch (error) {
     logger.error('Error getting language from CAP alert:', error);
-    throw new Error('Invalid CAP alert structure: unable to determine language');
+    throw new Error('Invalid CAP alert structure: unable to determine language', { cause: error });
   }
 };
 
@@ -66,10 +65,28 @@ const translateObject = async (obj, fromLang, translateEngine) => {
 
   // Fields that should not be translated
   const skipFields = [
-    'identifier', 'sender', 'sent', 'status', 'msgType', 'scope',
-    'addresses', 'code', 'incidents', 'language', 'category',
-    'responseType', 'urgency', 'severity', 'certainty', 'effective',
-    'onset', 'expires', 'senderName', 'headline', 'web', 'contact'
+    'identifier',
+    'sender',
+    'sent',
+    'status',
+    'msgType',
+    'scope',
+    'addresses',
+    'code',
+    'incidents',
+    'language',
+    'category',
+    'responseType',
+    'urgency',
+    'severity',
+    'certainty',
+    'effective',
+    'onset',
+    'expires',
+    'senderName',
+    'headline',
+    'web',
+    'contact',
   ];
 
   for (const [key, value] of Object.entries(obj)) {
@@ -82,8 +99,8 @@ const translateObject = async (obj, fromLang, translateEngine) => {
       translatedObj[key] = await translateText(value, fromLang, translateEngine);
     } else if (Array.isArray(value)) {
       translatedObj[key] = await Promise.all(
-        value.map(item => 
-          typeof item === 'object' 
+        value.map(item =>
+          typeof item === 'object'
             ? translateObject(item, fromLang, translateEngine)
             : translateText(item, fromLang, translateEngine)
         )
@@ -108,31 +125,28 @@ const translateObject = async (obj, fromLang, translateEngine) => {
 const translate = async (xmlMessage, exportJson = false, customTranslator = translateWithLibre) => {
   try {
     // Parse XML to JSON
+    // values are kept as strings so that identifiers, dates and the XML declaration round-trip unchanged
     const parserOptions = {
       attributeNamePrefix: '@_',
       ignoreAttributes: false,
-      parseAttributeValue: true,
+      parseAttributeValue: false,
+      parseTagValue: false,
       trimValues: true,
-      parseTagValue: true,
-      numberParseOptions: {
-        hex: true,
-        leadingZeros: false
-      }
     };
 
     const parser = new XMLParser(parserOptions);
     const alertData = parser.parse(xmlMessage);
 
-    // Check if translation is needed
+    // Check if translation is needed (already English: return as received)
     const languageFrom = getLanguage(alertData);
-    if (languageFrom?.toLowerCase().includes('en')) {
+    if (String(languageFrom).toLowerCase().startsWith('en')) {
       return exportJson ? alertData : xmlMessage;
     }
 
-    // Translate the alert info
-    logger.info('Starting CAP translation', { 
+    // Translate the <info> block(s) in place; <alert> header fields are kept as they are
+    logger.info('Starting CAP translation', {
       fromLanguage: languageFrom,
-      translator: customTranslator.name 
+      translator: customTranslator.name,
     });
 
     const translatedAlert = {
@@ -140,11 +154,9 @@ const translate = async (xmlMessage, exportJson = false, customTranslator = tran
       alert: {
         ...alertData.alert,
         info: Array.isArray(alertData.alert.info)
-          ? await Promise.all(alertData.alert.info.map(info => 
-              translateObject(info, languageFrom, customTranslator)
-            ))
-          : await translateObject(alertData.alert.info, languageFrom, customTranslator)
-      }
+          ? await Promise.all(alertData.alert.info.map(info => translateObject(info, languageFrom, customTranslator)))
+          : await translateObject(alertData.alert.info, languageFrom, customTranslator),
+      },
     };
 
     if (exportJson) {
@@ -157,17 +169,16 @@ const translate = async (xmlMessage, exportJson = false, customTranslator = tran
       ignoreAttributes: false,
       format: true,
       indentBy: '  ',
-      suppressEmptyNode: true
+      suppressEmptyNode: true,
     };
 
     const builder = new XMLBuilder(builderOptions);
     return builder.build(translatedAlert);
-
   } catch (error) {
     logger.error('CAP translation error:', error);
     return {
       error: getError(error),
-      status: 500
+      status: 500,
     };
   }
 };
@@ -177,5 +188,5 @@ export default {
   // Export for testing
   _translateObject: translateObject,
   _translateText: translateText,
-  _getLanguage: getLanguage
+  _getLanguage: getLanguage,
 };

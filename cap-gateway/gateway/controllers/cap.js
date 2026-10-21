@@ -1,24 +1,22 @@
-import { HTTP_CODE, Endpoints, SERVICE_TIMEOUT } from '../constants.js';
+import cote from 'cote';
+import { Endpoints, SERVICE_TIMEOUT } from '../constants.js';
 import { sanitizeParams } from '../middlewares/sanitize.js';
 import { schemaValidator } from '../middlewares/schemaValidator.js';
-import cote from 'cote';
+import { sendFailure, sendServiceReply } from '../errors.js';
 
 const Endpoint = Endpoints.cap;
-const getError = error => ({
-  error: error?.response?.data ?? error?.response?.message ?? error?.message ?? error?.response,
-});
 
 export function registerCapCalls(app) {
+  // one requester per route; cote balances its requests over the discovered responders
+  const requester = new cote.Requester({ name: 'cap_requester_translate', timeout: SERVICE_TIMEOUT });
+
   app.post(Endpoint.translate, sanitizeParams, schemaValidator, async (req, res) => {
     try {
-      const requester = new cote.Requester({ name: 'cap_requester_translate', timeout: SERVICE_TIMEOUT });
       const request = { type: 'translate', message: req.body.message, exportJson: req.body.exportJson ?? false };
-      let r = await requester.send(request);
-      return r.status !== undefined && r.error !== undefined
-        ? res.status(r.status).json({ error: r.error })
-        : res.send(r);
+      const reply = await requester.send(request);
+      return sendServiceReply(res, reply);
     } catch (error) {
-      return res.status(error?.response?.status ?? HTTP_CODE.ServerError).json(getError(error));
+      return sendFailure(res, error);
     }
   });
 }

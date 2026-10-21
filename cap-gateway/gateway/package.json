@@ -1,37 +1,30 @@
 {
-  "name": "gateway",
+  "name": "cap-gateway-api",
   "version": "1.0.0",
-  "description": "API Gateway",
+  "description": "API Gateway: Express HTTP(S) entry point that validates CAP XML and routes it to the responder mesh",
   "main": "index.js",
   "type": "module",
-  "author": "Andrei Besleaga",
-  "license": "All rights reserved!",
+  "private": true,
+  "author": "Andrei N. Besleaga",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "start:server": "pm2 start index.js --name gateway --log ../LOGS/APPLOG_gateway.log --time"
+    "start": "node index.js"
   },
   "dependencies": {
-    "body-parser": "^1.20.8",
     "compression": "^1.8.2",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
     "cote": "^1.2.0",
-    "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "helmet": "^4.6.0",
-    "libxmljs": "^1.0.11",
+    "libxmljs2": "^0.37.0",
     "morgan": "^1.12.1",
-    "nodemon": "^3.1.11",
-    "pm2": "^7.1.0",
     "rotating-file-stream": "^3.0.2",
     "validator": "^13.15.22",
     "winston": "^3.7.2"
   },
-  "devDependencies": {
-    "@types/express-slow-down": "^1.3.2",
-    "eslint": "^8.2.0",
-    "eslint-config-prettier": "^8.3.0",
-    "prettier": "^2.4.1"
+  "overrides": {
+    "tar": "^7.5.22"
   }
 }

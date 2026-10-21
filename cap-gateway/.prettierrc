@@ -7,6 +7,5 @@
   "bracketSpacing": true,
   "trailingComma": "es5",
   "useTabs": false,
-  "tabWidth": 2,
-  "editor.formatOnSave": true
+  "tabWidth": 2
 }

@@ -1,15 +1,12 @@
 import validator from 'validator';
-
 import { HTTP_CODE } from '../constants.js';
-const getError = error => ({
-  error: error?.response?.data ?? error?.response?.message ?? error?.message ?? error?.response,
-});
+import { getError } from '../errors.js';
 
 const MAX_PARAM_NAME_LENGTH = 50;
 const MAX_POST_PARAM_VALUES_LENGTH = 100000;
 
-export async function sanitizeParams(req, res, next) {
-  // middleware for basic sanitization of all requests parameters
+// Middleware: basic sanitisation of all POST body parameters (size limits, trim, strip control chars)
+export function sanitizeParams(req, res, next) {
   try {
     let valType = undefined;
     let newValue = null;
@@ -45,7 +42,7 @@ export async function sanitizeParams(req, res, next) {
       }
     }
 
-    next();
+    return next();
   } catch (error) {
     return res.status(error.response?.status ?? error.status ?? HTTP_CODE.ServerError).json(getError(error));
   }

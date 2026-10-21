@@ -1,4 +1,5 @@
-// Constants for environment
-export const SERVICE_TIMEOUT = 3000;
-export const ENV = 'development';
-export const TRANSLATOR_KEY = 'translationEngineAPIKey';
+// Translation engine settings (environment variables with the original defaults).
+// The default engine is LibreTranslate; its public instance requires an API key,
+// a self-hosted instance usually does not.
+export const TRANSLATOR_URL = process.env.TRANSLATOR_URL ?? 'https://libretranslate.com/translate';
+export const TRANSLATOR_KEY = process.env.TRANSLATOR_KEY ?? '';

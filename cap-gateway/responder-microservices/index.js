@@ -9,12 +9,12 @@ const service_responder = new cote.Responder({ name: 'service_responder' });
 
 // Messages
 service_responder.on('translate', async (req, cb) => {
-    cb(null, await CapController.translate(req) );
+  cb(null, await CapController.translate(req));
 });
 
-// Admin 
+// Admin
 service_responder.on('start', async (req, cb) => {
-    cb(null, await AdminController.pubsub(req) );
+  cb(null, await AdminController.pubsub(req));
 });
 
 // subscribe for microservice events
@@ -24,6 +24,6 @@ const randomSubscriber = new cote.Subscriber({
   // key: 'a certain key',
   subscribesTo: ['randomUpdate'],
 });
-randomSubscriber.on('randomUpdate', (req) => {
+randomSubscriber.on('randomUpdate', req => {
   logger.info('notified of ', req);
 });
