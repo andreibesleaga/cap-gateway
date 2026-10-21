@@ -1,78 +1,37 @@
 /**
- * RESTful API Gateway Express Microservice
+ * API Gateway process: cote requesters + the Express app over HTTP (HTTPS when NODE_ENV=production)
  */
-/* eslint-disable no-unused-vars */
-
-// imports required
-import express, { json, urlencoded } from 'express';
-import compression from 'compression';
-import morgan from 'morgan';
-import helmet from 'helmet';
 import { createServer } from 'https';
-import logger from './logger.js';
-
 import { readFileSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
-import * as path from 'path';
+import { dirname, join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { createStream } from 'rotating-file-stream';
-
-// import controllers for microservices
-import { registerAdminCalls } from './controllers/admin.js';
-import { registerCapCalls } from './controllers/cap.js';
-
-// read config values
+import logger from './logger.js';
+import { createApp } from './app.js';
+import { createRequester } from './mesh.js';
 import { ENV, APP_URL, APP_PORT, ACCESS_LOGS_DIR } from './constants.js';
 
-// setup server
-const app = express();
-
-// HTTPS server settings (keys if in production and HTTPS mode)
-let httpsServer = null;
-if (ENV === 'production') {
-  const key = readFileSync('../key.pem');
-  const cert = readFileSync('../cert.pem');
-  httpsServer = createServer({ key, cert }, app);
-}
-
-// All other server modules and options
-app.use(helmet());
-app.use(compression());
-app.use(json());
-app.use(urlencoded({ extended: true, parameterLimit: 10 }));
-
-// web server access-logs - create logs in the log directory if config setting exists in .env
+let accessLogStream;
 if (ACCESS_LOGS_DIR) {
-  if (!existsSync(ACCESS_LOGS_DIR)) {
-    mkdirSync(ACCESS_LOGS_DIR, { recursive: true });
-  }
-  const dirname = path.resolve();
-  const accessLogStream = createStream('access.log', { path: join(dirname, ACCESS_LOGS_DIR)});
-  app.use( 
-    morgan(
-      ':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" - :response-time ms - :total-time ms',
-      { stream: accessLogStream }
-    )
-  );
+  const logDir = resolve(ACCESS_LOGS_DIR);
+  if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true });
+  accessLogStream = createStream('access.log', { path: logDir });
 }
 
+// one requester per route; cote balances its requests round-robin over the connected responders
+const app = createApp({
+  capRequester: createRequester('cap_requester_translate'),
+  adminRequester: createRequester('admin_requester_pubsub'),
+  accessLogStream,
+});
 
-// register microservices endpoints
-registerAdminCalls(app);
-registerCapCalls(app);
-
-// redirect all unknown endpoints to /
-function redirectUnmatched(req, res) {
-  res.redirect(APP_URL);
-}
-app.use(redirectUnmatched);
-
-// run HTTP(S) server local/production
 if (ENV === 'production') {
-  httpsServer.listen(APP_PORT, () => {
-    logger.info(`API Gateway listening HTTPS at ${APP_URL}:${APP_PORT}`);
-  });
+  const certDir = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const key = readFileSync(join(certDir, 'key.pem'));
+  const cert = readFileSync(join(certDir, 'cert.pem'));
+  createServer({ key, cert }, app).listen(APP_PORT, () =>
+    logger.info(`API Gateway listening HTTPS at ${APP_URL}:${APP_PORT}`)
+  );
 } else {
-  app.listen(APP_PORT, () => {
-    logger.info(`API Gateway listening at ${APP_URL}:${APP_PORT}`);
-  });
+  app.listen(APP_PORT, () => logger.info(`API Gateway listening at ${APP_URL}:${APP_PORT}`));
 }

@@ -1,24 +1,22 @@
-import { HTTP_CODE, Endpoints, SERVICE_TIMEOUT } from '../constants.js';
+import { Endpoints, HTTP_CODE } from '../constants.js';
 import { sanitizeParams } from '../middlewares/sanitize.js';
 import { schemaValidator } from '../middlewares/schemaValidator.js';
-import cote from 'cote';
+import { sendToMesh } from '../mesh.js';
 
-const Endpoint = Endpoints.cap;
-const getError = error => ({
-  error: error?.response?.data ?? error?.response?.message ?? error?.message ?? error?.response,
-});
+// POST /app/cap/translate { message: CAP XML, exportJson?: boolean }
+export function registerCapCalls(app, requester) {
+  app.post(Endpoints.cap.translate, sanitizeParams, schemaValidator, async (req, res) => {
+    const exportJson = req.body.exportJson === true;
+    const { reply, status, error } = await sendToMesh(requester, {
+      type: 'translate',
+      message: req.body.message,
+      exportJson,
+    });
+    if (error) return res.status(status).json({ error });
+    if (reply?.error !== undefined)
+      return res.status(reply.status ?? HTTP_CODE.ServerError).json({ error: reply.error });
 
-export function registerCapCalls(app) {
-  app.post(Endpoint.translate, sanitizeParams, schemaValidator, async (req, res) => {
-    try {
-      const requester = new cote.Requester({ name: 'cap_requester_translate', timeout: SERVICE_TIMEOUT });
-      const request = { type: 'translate', message: req.body.message, exportJson: req.body.exportJson ?? false };
-      let r = await requester.send(request);
-      return r.status !== undefined && r.error !== undefined
-        ? res.status(r.status).json({ error: r.error })
-        : res.send(r);
-    } catch (error) {
-      return res.status(error?.response?.status ?? HTTP_CODE.ServerError).json(getError(error));
-    }
+    res.set('X-Translation', reply.translation);
+    return exportJson ? res.json(reply.message) : res.type('application/xml').send(reply.message);
   });
 }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>EXAMPLE-FR-0001</identifier>
+  <sender>alerts@example.org</sender>
+  <sent>2024-08-05T13:00:00+02:00</sent>
+  <status>Exercise</status>
+  <msgType>Alert</msgType>
+  <scope>Public</scope>
+  <info>
+    <language>fr-FR</language>
+    <category>Met</category>
+    <event>Inondation</event>
+    <responseType>Evacuate</responseType>
+    <urgency>Immediate</urgency>
+    <severity>Severe</severity>
+    <certainty>Observed</certainty>
+    <headline>Alerte inondation</headline>
+    <description>De fortes pluies provoquent une inondation rapide le long de la rivière. Le niveau de l'eau continue de monter.</description>
+    <instruction>Quittez immédiatement les zones basses et montez à l'étage.</instruction>
+    <area>
+      <areaDesc>Vallée de l'Exemple</areaDesc>
+    </area>
+  </info>
+</alert>

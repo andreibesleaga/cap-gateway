@@ -1,17 +1,37 @@
 {
   "name": "cap-gateway",
   "version": "1.0.0",
-  "description": "Proof of concept mvp distributed app for Common Alert Protocol Automatic Translation Service Gateway",
+  "description": "CAP 1.2 translation gateway (archived proof of concept): PM2 process file, mesh monitor, toolchain and the test suites",
   "main": "monitor.js",
+  "type": "module",
+  "private": true,
+  "author": "Andrei N. Besleaga",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "pm2 start all.json",
     "monitor": "node monitor.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{js,mjs}\"",
+    "format:check": "prettier --check \"**/*.{js,mjs}\"",
+    "test": "npm run test:unit && npm run test:bdd",
+    "test:unit": "node --import ./test/setup.mjs --test \"test/unit/*.test.js\"",
+    "test:coverage": "node --import ./test/setup.mjs --test --experimental-test-coverage --test-coverage-include=\"responder-microservices/services/**\" --test-coverage-include=\"gateway/middlewares/**\" --test-coverage-lines=90 \"test/unit/*.test.js\"",
+    "test:bdd": "cucumber-js",
+    "test:e2e:libre": "node scripts/e2e-libre.mjs",
+    "test:e2e:llm": "node scripts/e2e-llm.mjs"
   },
-  "author": "Andrei Besleaga (Nicolae)",
-  "license": "All rights reserved",
   "dependencies": {
-    "cote": "^1.2.0",
-    "nodemon": "^3.1.14"
+    "cote": "^1.2.0"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^13.3.0",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10"
   }
 }

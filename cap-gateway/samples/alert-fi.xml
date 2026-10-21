@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>EXAMPLE-FI-0001</identifier>
+  <sender>alerts@example.org</sender>
+  <sent>2024-08-05T14:00:00+03:00</sent>
+  <status>Exercise</status>
+  <msgType>Alert</msgType>
+  <scope>Public</scope>
+  <info>
+    <language>fi-FI</language>
+    <category>Met</category>
+    <event>Tulva</event>
+    <responseType>Evacuate</responseType>
+    <urgency>Immediate</urgency>
+    <severity>Severe</severity>
+    <certainty>Observed</certainty>
+    <headline>Tulvavaroitus</headline>
+    <description>Rankkasateet aiheuttavat tulvia alueen jokien varsilla. Vedenpinta nousee edelleen.</description>
+    <instruction>Poistukaa heti matalalla sijaitsevilta alueilta ja siirtykää korkeammalle maastoon.</instruction>
+    <area>
+      <areaDesc>Esimerkkikunta</areaDesc>
+    </area>
+  </info>
+</alert>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>EXAMPLE-RO-RICH</identifier>
+  <sender>alerte@example.ro</sender>
+  <sent>2024-08-05T13:00:00+03:00</sent>
+  <status>Exercise</status>
+  <msgType>Alert</msgType>
+  <source>Exercise source</source>
+  <scope>Public</scope>
+  <code>EXERCISE</code>
+  <note>Note at alert level stays as it is</note>
+  <info>
+    <language>ro-RO</language>
+    <category>Met</category>
+    <category>Safety</category>
+    <event>Inundații</event>
+    <responseType>Evacuate</responseType>
+    <responseType>Monitor</responseType>
+    <urgency>Immediate</urgency>
+    <severity>Extreme</severity>
+    <certainty>Observed</certainty>
+    <audience>Locuitorii din zonele inundabile</audience>
+    <eventCode>
+      <valueName>SAME</valueName>
+      <value>FLW</value>
+    </eventCode>
+    <effective>2024-08-05T13:00:00+03:00</effective>
+    <onset>2024-08-05T14:00:00+03:00</onset>
+    <expires>2024-08-06T08:00:00+03:00</expires>
+    <senderName>Inspectoratul pentru Situații de Urgență Exemplu</senderName>
+    <headline>Inundații pe râul Exemplu</headline>
+    <description>Nivelul râului a depășit cota de pericol. Apa inundă străzile din apropiere.</description>
+    <instruction>Evacuați imediat zonele joase. Nu traversați drumurile inundate.</instruction>
+    <web>https://example.ro/alerte/inundatii</web>
+    <contact>Dispeceratul ISU, telefon 112</contact>
+    <parameter>
+      <valueName>nivel_rau_cm</valueName>
+      <value>480</value>
+    </parameter>
+    <resource>
+      <resourceDesc>Harta zonelor inundate</resourceDesc>
+      <mimeType>image/png</mimeType>
+      <uri>https://example.ro/harta.png</uri>
+    </resource>
+    <area>
+      <areaDesc>Cartierul Lunca</areaDesc>
+      <polygon>45.10,25.10 45.20,25.10 45.20,25.20 45.10,25.10</polygon>
+      <circle>45.15,25.15 2.5</circle>
+      <geocode>
+        <valueName>SIRUTA</valueName>
+        <value>12345</value>
+      </geocode>
+      <altitude>100</altitude>
+      <ceiling>200</ceiling>
+    </area>
+    <area>
+      <areaDesc>Satul Valea</areaDesc>
+    </area>
+  </info>
+</alert>

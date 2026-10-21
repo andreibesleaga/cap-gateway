@@ -1,181 +1,68 @@
-import { XMLParser, XMLBuilder } from 'fast-xml-parser';
-import { translateWithLibre } from './translator.js';
-import logger from '../logger.js';
+import { XMLParser } from 'fast-xml-parser';
+import { findInfoBlocks, isEnglish, buildEnglishCopy, appendAfterLastInfo } from './capXml.js';
 
-/**
- * Formats error response
- * @param {Error} error - Error object
- * @returns {Object} Formatted error object
- */
-const getError = error => ({
-  error: error?.response?.data ?? error?.response?.message ?? error?.message ?? error,
-  details: error?.stack
+// Result of every call: { translation, message, reason? }
+//   translation: 'translated' | 'passthrough' | 'failed'  (sent to clients as the X-Translation header)
+//   message:     the alert as XML text, or as a parsed object when exportJson is true
+// The original alert is never modified: 'translated' appends en-US <info> copies, the other two return it as is.
+
+// values are kept as strings so identifiers, dates and the XML declaration round-trip unchanged
+const parser = new XMLParser({
+  attributeNamePrefix: '@_',
+  ignoreAttributes: false,
+  parseAttributeValue: false,
+  parseTagValue: false,
+  trimValues: true,
 });
 
-/**
- * Gets language from CAP alert
- * @param {Object} alertData - Parsed CAP alert data
- * @returns {string} Language code or null
- */
-const getLanguage = alertData => {
-  try {
-    if (Array.isArray(alertData.alert.info)) {
-      return alertData.alert.info[0].language ?? 'autodetect';
-    }
-    return alertData.alert.info.language ?? 'autodetect';
-  } catch (error) {
-    logger.error('Error getting language from CAP alert:', error);
-    throw new Error('Invalid CAP alert structure: unable to determine language');
-  }
-};
+const sameLanguage = (a, b) => a.toLowerCase() === b.toLowerCase();
 
 /**
- * Translates text content while preserving special characters and formatting
- * @param {string} text - Text to translate
- * @param {string} fromLang - Source language
- * @param {Function} translateEngine - Translation function to use
- * @returns {Promise<string>} Translated text
+ * Chooses which <info> blocks get an English copy (see docs/adr/0001-append-english-info-block.md):
+ * none if the alert has no <info> or already has an English one (a missing <language> is en-US);
+ * otherwise every block in the language of the first <info>, the alert's first language sequence.
  */
-const translateText = async (text, fromLang, translateEngine) => {
-  if (!text || typeof text !== 'string' || !text.trim()) {
-    return text;
-  }
+export function selectSourceBlocks(blocks) {
+  if (blocks.length === 0) return { reason: 'no <info> block' };
+  if (blocks.some(b => isEnglish(b.language))) return { reason: 'English <info> present' };
+  const source = blocks[0].language;
+  return { source, selected: blocks.filter(b => sameLanguage(b.language, source)) };
+}
 
-  try {
-    const translated = await translateEngine(text, fromLang, 'en');
-    return translated || text; // Fallback to original if translation is empty
-  } catch (error) {
-    logger.warn(`Translation failed for text: "${text.substring(0, 50)}..."`, error);
-    return text; // Return original text on translation failure
-  }
-};
+export function createCapService({ engine, logger }) {
+  const reply = (translation, xml, exportJson, reason) => ({
+    translation,
+    message: exportJson ? parser.parse(xml) : xml,
+    ...(reason ? { reason } : {}),
+  });
 
-/**
- * Recursively translates object values
- * @param {Object} obj - Object to translate
- * @param {string} fromLang - Source language
- * @param {Function} translateEngine - Translation function
- * @returns {Promise<Object>} Translated object
- */
-const translateObject = async (obj, fromLang, translateEngine) => {
-  if (!obj || typeof obj !== 'object') {
-    return obj;
-  }
-
-  const translatedObj = Array.isArray(obj) ? [] : {};
-
-  // Fields that should not be translated
-  const skipFields = [
-    'identifier', 'sender', 'sent', 'status', 'msgType', 'scope',
-    'addresses', 'code', 'incidents', 'language', 'category',
-    'responseType', 'urgency', 'severity', 'certainty', 'effective',
-    'onset', 'expires', 'senderName', 'headline', 'web', 'contact'
-  ];
-
-  for (const [key, value] of Object.entries(obj)) {
-    if (skipFields.includes(key)) {
-      translatedObj[key] = value;
-      continue;
+  async function translate(xml, exportJson = false) {
+    const blocks = findInfoBlocks(xml);
+    const { source, selected, reason } = selectSourceBlocks(blocks);
+    if (!selected) {
+      logger.info('translate: passthrough (%s)', reason);
+      return reply('passthrough', xml, exportJson, reason);
     }
 
-    if (typeof value === 'string') {
-      translatedObj[key] = await translateText(value, fromLang, translateEngine);
-    } else if (Array.isArray(value)) {
-      translatedObj[key] = await Promise.all(
-        value.map(item => 
-          typeof item === 'object' 
-            ? translateObject(item, fromLang, translateEngine)
-            : translateText(item, fromLang, translateEngine)
+    let translations;
+    try {
+      // one engine call per block, all blocks in parallel; any failure fails the whole alert
+      translations = await Promise.all(
+        selected.map(b =>
+          b.fields.length ? engine.translate(source, Object.fromEntries(b.fields.map(f => [f.key, f.text]))) : {}
         )
       );
-    } else if (value && typeof value === 'object') {
-      translatedObj[key] = await translateObject(value, fromLang, translateEngine);
-    } else {
-      translatedObj[key] = value;
+    } catch (error) {
+      const why = error.reason ?? error.message;
+      logger.warn('translate: failed (%s, engine %s, %s)', source, engine.name, why);
+      return reply('failed', xml, exportJson, `engine ${engine.name}: ${why}`);
     }
+
+    const copies = selected.map((b, i) => buildEnglishCopy(xml, b, translations[i]));
+    const out = appendAfterLastInfo(xml, blocks.at(-1), copies);
+    logger.info('translate: translated (%s, %d block(s), engine %s)', source, copies.length, engine.name);
+    return reply('translated', out, exportJson);
   }
 
-  return translatedObj;
-};
-
-/**
- * Translates CAP message
- * @param {string} xmlMessage - XML message to translate
- * @param {boolean} [exportJson=false] - Whether to export as JSON
- * @param {Function} [customTranslator=translateWithLibre] - Custom translation function
- * @returns {Promise<string|Object>} Translated message
- */
-const translate = async (xmlMessage, exportJson = false, customTranslator = translateWithLibre) => {
-  try {
-    // Parse XML to JSON
-    const parserOptions = {
-      attributeNamePrefix: '@_',
-      ignoreAttributes: false,
-      parseAttributeValue: true,
-      trimValues: true,
-      parseTagValue: true,
-      numberParseOptions: {
-        hex: true,
-        leadingZeros: false
-      }
-    };
-
-    const parser = new XMLParser(parserOptions);
-    const alertData = parser.parse(xmlMessage);
-
-    // Check if translation is needed
-    const languageFrom = getLanguage(alertData);
-    if (languageFrom?.toLowerCase().includes('en')) {
-      return exportJson ? alertData : xmlMessage;
-    }
-
-    // Translate the alert info
-    logger.info('Starting CAP translation', { 
-      fromLanguage: languageFrom,
-      translator: customTranslator.name 
-    });
-
-    const translatedAlert = {
-      ...alertData,
-      alert: {
-        ...alertData.alert,
-        info: Array.isArray(alertData.alert.info)
-          ? await Promise.all(alertData.alert.info.map(info => 
-              translateObject(info, languageFrom, customTranslator)
-            ))
-          : await translateObject(alertData.alert.info, languageFrom, customTranslator)
-      }
-    };
-
-    if (exportJson) {
-      return translatedAlert;
-    }
-
-    // Convert back to XML
-    const builderOptions = {
-      attributeNamePrefix: '@_',
-      ignoreAttributes: false,
-      format: true,
-      indentBy: '  ',
-      suppressEmptyNode: true
-    };
-
-    const builder = new XMLBuilder(builderOptions);
-    return builder.build(translatedAlert);
-
-  } catch (error) {
-    logger.error('CAP translation error:', error);
-    return {
-      error: getError(error),
-      status: 500
-    };
-  }
-};
-
-export default {
-  translate,
-  // Export for testing
-  _translateObject: translateObject,
-  _translateText: translateText,
-  _getLanguage: getLanguage
-};
+  return { translate };
+}
